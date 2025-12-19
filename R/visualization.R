@@ -476,13 +476,29 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
         }
 
         # Run the traceroute command using system() with shorter timeout
-        message("Executing: ", full_cmd)
+        message("Executing traceroute from your system IP: ", full_cmd)
 
         # Use a progress indicator
         progress <- shiny::Progress$new()
         progress$set(message = "Running traceroute...", value = 0.1)
 
-        system_result <- system(full_cmd, intern = TRUE, timeout = 10)  # Even shorter timeout
+        # Execute command and handle encoding issues
+        system_result <- tryCatch({
+          system(full_cmd, intern = TRUE, timeout = 10)
+        }, error = function(e) {
+          # If encoding fails, try with different approach
+          message("Standard execution failed, trying alternative approach...")
+          system(full_cmd, intern = TRUE, timeout = 10, ignore.stderr = FALSE)
+        })
+
+        # Handle encoding issues - convert to UTF-8
+        if (length(system_result) > 0) {
+          system_result <- iconv(system_result, from = "", to = "UTF-8", sub = "?")
+          # Also print to console as requested
+          cat("TRACEROUTE OUTPUT:\n")
+          cat(system_result, sep = "\n")
+          cat("\n")
+        }
 
         progress$set(value = 0.5, message = "Parsing results...")
 
