@@ -3,7 +3,7 @@
 # Background service for collecting and updating network data
 
 # Load required packages
-library(internet_structure)
+library(internetstructure)
 library(DBI)
 library(RPostgres)
 library(redux)

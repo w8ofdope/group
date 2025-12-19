@@ -3,7 +3,7 @@
 # Data collection functions
 export(collect_dbip_data)
 export(collect_maxmind_data)
-export(download_geolite_data)
+export(download_geolite_asn)
 export(parse_geolite_csv)
 
 # Traceroute functions
@@ -27,6 +27,13 @@ export(create_geographic_map)
 
 # Utility functions
 export(validate_ip)
+export(ip_to_numeric)
+export(numeric_to_ip)
+export(ip_in_range)
 export(ip_to_asn)
 export(get_as_relationships)
 export(calculate_connectivity_metrics)
+export(generate_random_ips)
+export(validate_asn)
+export(calculate_cidr_prefix)
+export(format_as_info)

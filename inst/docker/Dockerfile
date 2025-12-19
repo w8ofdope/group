@@ -112,4 +112,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3838/ || exit 1
 
 # Default command to run the Shiny app
-CMD ["R", "-e", "internet_structure::run_shiny_app(port = 3838, host = '0.0.0.0')"]
+CMD ["R", "-e", "internetstructure::run_shiny_app(port = 3838, host = '0.0.0.0')"]

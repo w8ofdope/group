@@ -49,7 +49,7 @@ This project investigates the global Internet structure and connectivity by coll
 install.packages("remotes")
 
 # Install the package
-remotes::install_github("w8ofdope/group")
+remotes::install_github("w8ofdope/group", ref = "main")
 ```
 
 ### Manual Installation
@@ -71,7 +71,7 @@ devtools::install()
 ### Basic Usage
 
 ```r
-library(internet_structure)
+library(internetstructure)
 
 # Collect IP-ASN data
 dbip_data <- collect_dbip_data()
@@ -108,7 +108,7 @@ docker-compose logs -f internet-structure-app
 ## Project Structure
 
 ```
-internet_structure/
+internetstructure/
 ├── DESCRIPTION                    # Package metadata
 ├── NAMESPACE                      # Package exports
 ├── README.md                      # This file
@@ -306,7 +306,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 If you use this package in your research, please cite:
 
 ```bibtex
-@software{internet_structure,
+@software{internetstructure,
   title = {Internet Structure Explorer: R Package for Internet Connectivity Analysis},
   author = {Research Group},
   url = {https://github.com/w8ofdope/group},
