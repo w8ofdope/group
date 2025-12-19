@@ -112,6 +112,13 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
             )
           ),
           shiny::fluidRow(
+            shiny::column(12,
+              shiny::h4("Raw Traceroute Output:"),
+              shiny::verbatimTextOutput("trace_raw_output"),
+              shiny::br()
+            )
+          ),
+          shiny::fluidRow(
             shiny::column(6, plotly::plotlyOutput("trace_plot")),
             shiny::column(6, DT::dataTableOutput("trace_table"))
           )
@@ -289,6 +296,7 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
     # Reactive data loading
     as_data_reactive <- shiny::reactiveVal(as_data)
     traceroute_data_reactive <- shiny::reactiveVal(traceroute_data)
+    traceroute_raw_output <- shiny::reactiveVal("")
 
     # Update ASN choices when data loads
     shiny::observe({
@@ -492,12 +500,18 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
         })
 
         # Handle encoding issues - convert to UTF-8
+        raw_output <- ""
         if (length(system_result) > 0) {
           system_result <- iconv(system_result, from = "", to = "UTF-8", sub = "?")
+          raw_output <- paste(system_result, collapse = "\n")
+
           # Also print to console as requested
           cat("TRACEROUTE OUTPUT:\n")
           cat(system_result, sep = "\n")
           cat("\n")
+
+          # Update raw output for display in app
+          traceroute_raw_output(raw_output)
         }
 
         progress$set(value = 0.5, message = "Parsing results...")
@@ -614,6 +628,16 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
         shiny::showNotification(paste("Traceroute error:", e$message), type = "error")
         warning("Traceroute error: ", e$message)
       })
+    })
+
+    # Raw traceroute output display
+    output$trace_raw_output <- shiny::renderText({
+      raw_output <- traceroute_raw_output()
+      if (is.null(raw_output) || raw_output == "") {
+        "No traceroute output available. Click 'Run Traceroute' to start."
+      } else {
+        raw_output
+      }
     })
 
     # Full data table
