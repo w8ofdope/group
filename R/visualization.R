@@ -13,6 +13,7 @@
 #' @import networkD3
 #' @import ggplot2
 #' @import dplyr
+#' @import magrittr
 NULL
 
 #' Create Shiny Web Application
@@ -126,6 +127,17 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
 
   # Define server
   server <- function(input, output, session) {
+
+    # Load demo data if no data provided
+    if (is.null(as_data)) {
+      data(demo_unified_data, package = "internetstructure")
+      as_data <- demo_unified_data
+    }
+
+    if (is.null(traceroute_data)) {
+      data(demo_traceroute_data, package = "internetstructure")
+      traceroute_data <- demo_traceroute_data
+    }
 
     # Reactive data loading
     as_data_reactive <- shiny::reactiveVal(as_data)
@@ -286,27 +298,39 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
     shiny::observeEvent(input$run_trace, {
       target <- input$trace_target
 
-      # Run traceroute (simplified - would call actual traceroute function)
-      shiny::showNotification("Running traceroute...", type = "message")
+      # Show notification
+      shiny::showNotification("Loading demo traceroute data...", type = "message")
 
-      # Mock traceroute result for demo
-      mock_result <- data.frame(
-        hop = 1:5,
-        ip_hostname = c("192.168.1.1", "10.0.0.1", "203.0.113.1", "8.8.8.8", "8.8.8.8"),
-        avg_rtt = c(1.2, 5.4, 23.1, 45.2, 44.8)
-      )
+      # Use demo traceroute data
+      trace_data <- traceroute_data_reactive()
+
+      # Filter by target if possible
+      if (!is.null(trace_data) && nrow(trace_data) > 0) {
+        # For demo, just show the data
+        display_data <- trace_data
+      } else {
+        # Fallback mock data
+        display_data <- data.frame(
+          hop = 1:5,
+          ip_hostname = c("192.168.1.1", "10.0.0.1", "203.0.113.1", target, target),
+          avg_rtt = c(1.2, 5.4, 23.1, 45.2, 44.8),
+          asn = c(NA, NA, 3356, 15169, 15169)
+        )
+      }
 
       output$trace_table <- DT::renderDataTable({
-        DT::datatable(mock_result)
+        DT::datatable(display_data, options = list(pageLength = 10))
       })
 
       output$trace_plot <- plotly::renderPlotly({
-        plotly::plot_ly(mock_result, x = ~hop, y = ~avg_rtt, type = "scatter",
+        plotly::plot_ly(display_data, x = ~hop, y = ~avg_rtt, type = "scatter",
                        mode = "lines+markers", name = "RTT") %>%
           plotly::layout(title = paste("Traceroute to", target),
                         xaxis = list(title = "Hop"),
                         yaxis = list(title = "RTT (ms)"))
       })
+
+      shiny::showNotification("Demo traceroute data loaded!", type = "message", duration = 2)
     })
 
     # Full data table
@@ -337,6 +361,17 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
 #' }
 run_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
                          port = 3838, host = "127.0.0.1") {
+  # Load demo data if no data provided
+  if (is.null(as_data)) {
+    data(demo_unified_data, package = "internetstructure")
+    as_data <- demo_unified_data
+  }
+
+  if (is.null(traceroute_data)) {
+    data(demo_traceroute_data, package = "internetstructure")
+    traceroute_data <- demo_traceroute_data
+  }
+
   app <- create_shiny_app(as_data, traceroute_data)
   shiny::runApp(app, port = port, host = host)
 }
