@@ -186,6 +186,26 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
                           "North America", "Europe", "Europe", "Africa", "Africa",
                           "Europe", "Asia", "Europe", "Europe", "Europe")
 
+      # Country coordinates (longitude, latitude) - approximate centers/capitals
+      country_coords <- list(
+        "US" = c(-95.7129, 37.0902),    # Center of USA
+        "SE" = c(18.0686, 59.3293),     # Stockholm
+        "DE" = c(10.4515, 51.1657),     # Berlin
+        "IN" = c(78.9629, 20.5937),     # New Delhi
+        "NL" = c(5.2913, 52.1326),      # Amsterdam
+        "GB" = c(-0.1278, 51.5074),     # London
+        "RU" = c(37.6173, 55.7558),     # Moscow
+        "FR" = c(2.3522, 48.8566),      # Paris
+        "CH" = c(7.4474, 46.9481),      # Bern
+        "BE" = c(4.3517, 50.8503),      # Brussels
+        "HK" = c(114.1694, 22.3193),    # Hong Kong
+        "PT" = c(-9.1393, 38.7223),     # Lisbon
+        "IT" = c(12.4964, 41.9028),     # Rome
+        "ZA" = c(28.0473, -26.2041),    # Johannesburg
+        "CN" = c(116.4074, 39.9042),    # Beijing
+        "IE" = c(-6.2603, 53.3498)      # Dublin
+      )
+
       # Generate 600+ records with diverse combinations
       set.seed(12345)
       n_records <- 600
@@ -201,7 +221,9 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
         continent_name = "",
         ip_count = sample(c(256, 512, 1024, 2048, 4096), n_records, replace = TRUE),
         start_ip_numeric = 0,
-        end_ip_numeric = 0
+        end_ip_numeric = 0,
+        latitude = 0,
+        longitude = 0
       )
 
       # Fill organization, country_name, continent info based on ASN/country
@@ -226,6 +248,19 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
         # Convert to IP strings
         as_data$start_ip[i] <- numeric_to_ip(base_ip)
         as_data$end_ip[i] <- numeric_to_ip(base_ip + as_data$ip_count[i] - 1)
+
+        # Add coordinates based on country
+        coords <- country_coords[[as_data$country_code[i]]]
+        if (!is.null(coords)) {
+          # Add small random offset for visual distribution
+          offset_lat <- runif(1, -2, 2)
+          offset_lng <- runif(1, -2, 2)
+          as_data$latitude[i] <- coords[2] + offset_lat
+          as_data$longitude[i] <- coords[1] + offset_lng
+        } else {
+          as_data$latitude[i] <- runif(1, -90, 90)
+          as_data$longitude[i] <- runif(1, -180, 180)
+        }
       }
 
       # Remove duplicates and ensure data quality
@@ -361,13 +396,15 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
       data <- as_data_reactive()
       if (is.null(data)) return(NULL)
 
-      # Aggregate data by country
+      # Aggregate data by country with coordinates
       country_data <- data %>%
-        dplyr::filter(!is.na(country_code), !is.na(country_name)) %>%
+        dplyr::filter(!is.na(country_code), !is.na(country_name), !is.na(latitude), !is.na(longitude)) %>%
         dplyr::group_by(country_code, country_name) %>%
         dplyr::summarise(
           asn_count = length(unique(asn)),
           ip_ranges = dplyr::n(),
+          latitude = mean(latitude, na.rm = TRUE),
+          longitude = mean(longitude, na.rm = TRUE),
           .groups = "drop"
         )
 
@@ -375,13 +412,14 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
       leaflet::leaflet(country_data) %>%
         leaflet::addTiles() %>%
         leaflet::addCircles(
-          lng = ~0, lat = ~0,  # Placeholder - would need actual coordinates
+          lng = ~longitude, lat = ~latitude,
           radius = ~sqrt(asn_count) * 50000,
           popup = ~paste0(country_name, "<br>",
                          "ASNs: ", asn_count, "<br>",
                          "IP Ranges: ", ip_ranges),
           color = "blue", fillOpacity = 0.7
-        )
+        ) %>%
+        leaflet::setView(lng = 0, lat = 20, zoom = 2)  # Center on world
     })
 
     # Network graph (simplified)
