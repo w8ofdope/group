@@ -1,0 +1,11 @@
+demo_geo_data <- data.frame(
+  network = c("8.8.8.0/24", "8.8.4.0/24", "1.1.1.0/24", "1.0.0.0/24", "208.67.222.0/24", "208.67.220.0/24"),
+  country_code = c("US", "US", "US", "US", "US", "US"),
+  country_name = c("United States", "United States", "United States", "United States", "United States", "United States"),
+  continent_code = c("NA", "NA", "NA", "NA", "NA", "NA"),
+  continent_name = c("North America", "North America", "North America", "North America", "North America", "North America"),
+  start_ip = c("8.8.8.0", "8.8.4.0", "1.1.1.0", "1.0.0.0", "208.67.222.0", "208.67.220.0"),
+  prefix_length = c(24, 24, 24, 24, 24, 24),
+  start_ip_numeric = c(134744072, 134743044, 16843008, 16777216, 3503329792, 3503329536)
+)
+save(demo_geo_data, file = "data/demo_geo_data.rda", compress = "gzip")

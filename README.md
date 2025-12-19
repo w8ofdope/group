@@ -68,12 +68,29 @@ devtools::install()
 
 ## Quick Start
 
-### Basic Usage
+### Using Demo Data (Recommended for First Time)
+
+The package includes demo datasets for immediate exploration:
 
 ```r
 library(internetstructure)
 
-# Collect IP-ASN data
+# Load demo data
+data(demo_dbip_data)       # IP-ASN mappings
+data(demo_geo_data)        # Geographic data
+data(demo_unified_data)    # Combined AS data
+data(demo_traceroute_data) # Sample traceroute results
+
+# Launch Shiny application with demo data
+run_shiny_app(as_data = demo_unified_data)
+```
+
+### Basic Usage with Live Data
+
+```r
+library(internetstructure)
+
+# Collect IP-ASN data from sources
 dbip_data <- collect_dbip_data()
 maxmind_data <- collect_maxmind_data()
 

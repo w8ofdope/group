@@ -50,6 +50,7 @@ logs/
 
 # Data files (temporary)
 data/
+!data/
 !data-raw/
 data-raw/*.csv
 data-raw/*.rds

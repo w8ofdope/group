@@ -33,6 +33,7 @@ WORKDIR /app
 FROM base AS r-deps-core
 RUN install2.r --error --skipinstalled \
     dplyr \
+    magrittr \
     tidyr \
     readr \
     httr \
