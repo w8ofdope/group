@@ -130,13 +130,39 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
 
     # Load demo data if no data provided
     if (is.null(as_data)) {
-      data(demo_unified_data, package = "internetstructure")
-      as_data <- demo_unified_data
+      # Create inline demo data instead of loading from .rda files
+      as_data <- data.frame(
+        asn = c(15169, 15169, 13335, 13335, 3356, 3356),
+        organization = c("Google LLC", "Google LLC", "Cloudflare, Inc.", "Cloudflare, Inc.",
+                        "Level 3 Communications, Inc.", "Level 3 Communications, Inc."),
+        start_ip = c("8.8.8.0", "8.8.4.0", "1.1.1.0", "1.0.0.0", "208.67.222.0", "208.67.220.0"),
+        end_ip = c("8.8.8.255", "8.8.4.255", "1.1.1.255", "1.0.0.255", "208.67.222.255", "208.67.220.255"),
+        country_code = c("US", "US", "US", "US", "US", "US"),
+        country_name = c("United States", "United States", "United States", "United States", "United States", "United States"),
+        continent_code = c("NA", "NA", "NA", "NA", "NA", "NA"),
+        continent_name = c("North America", "North America", "North America", "North America", "North America", "North America"),
+        ip_count = c(256, 256, 256, 256, 256, 256),
+        start_ip_numeric = c(134744072, 134743044, 16843008, 16777216, 3503329792, 3503329536),
+        end_ip_numeric = c(134744327, 134743299, 16843263, 16777471, 3503330047, 3503329791)
+      )
     }
 
     if (is.null(traceroute_data)) {
-      data(demo_traceroute_data, package = "internetstructure")
-      traceroute_data <- demo_traceroute_data
+      # Create inline demo traceroute data
+      traceroute_data <- data.frame(
+        hop = 1:6,
+        ip_hostname = c("192.168.1.1", "10.0.0.1", "203.0.113.1", "8.8.8.8", "8.8.8.8", "8.8.8.8"),
+        rtt1 = c(1.2, 5.4, 23.1, 45.2, 44.8, 45.1),
+        rtt2 = c(1.1, 5.6, 22.8, 45.8, 45.2, 44.7),
+        rtt3 = c(1.3, 5.2, 23.4, 44.9, 45.1, 45.3),
+        avg_rtt = c(1.2, 5.4, 23.1, 45.3, 45.0, 45.0),
+        asn = c(NA, NA, 3356, 15169, 15169, 15169),
+        target = "8.8.8.8",
+        protocol = "icmp",
+        timestamp = as.POSIXct("2024-01-01 12:00:00"),
+        as_path = "3356 -> 15169",
+        as_path_length = 2
+      )
     }
 
     # Reactive data loading
@@ -361,17 +387,7 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
 #' }
 run_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
                          port = 3838, host = "127.0.0.1") {
-  # Load demo data if no data provided
-  if (is.null(as_data)) {
-    data(demo_unified_data, package = "internetstructure")
-    as_data <- demo_unified_data
-  }
-
-  if (is.null(traceroute_data)) {
-    data(demo_traceroute_data, package = "internetstructure")
-    traceroute_data <- demo_traceroute_data
-  }
-
+  # Demo data is loaded automatically in create_shiny_app if not provided
   app <- create_shiny_app(as_data, traceroute_data)
   shiny::runApp(app, port = port, host = host)
 }
