@@ -444,7 +444,7 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
       networkD3::simpleNetwork(links, height = 600)
     })
 
-    # Real Traceroute functionality
+    # Real Traceroute functionality with progressive display
     shiny::observeEvent(input$run_trace, {
       target <- input$trace_target
 
@@ -454,44 +454,77 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
         return()
       }
 
-      # Show progress notification
-      shiny::showNotification("Running traceroute... This may take a few seconds", type = "message", duration = 3)
+      # Initialize empty results
+      traceroute_data_reactive(data.frame())
+
+      # Show initial progress notification
+      shiny::showNotification("Starting traceroute...", type = "message", duration = 2)
 
       tryCatch({
         # Try to run traceroute using system() which is more reliable
         os <- tolower(Sys.info()["sysname"])
 
-        # Construct command based on OS
+        # Construct command based on OS with faster settings
         if (os == "windows") {
-          # Windows tracert command
-          full_cmd <- sprintf('tracert -h 30 -w 2000 "%s"', target)
+          # Windows tracert command - faster settings
+          full_cmd <- sprintf('tracert -h 10 -w 500 "%s"', target)  # Even faster: 10 hops, 500ms timeout
         } else if (os %in% c("linux", "darwin")) {
-          # Unix traceroute
-          full_cmd <- sprintf('traceroute -m 30 -w 2 "%s"', target)
+          # Unix traceroute - faster settings
+          full_cmd <- sprintf('traceroute -m 10 -w 0.5 "%s"', target)  # Even faster: 10 hops, 0.5s timeout
         } else {
           stop("Unsupported operating system: ", os)
         }
 
-        # Run the traceroute command using system()
+        # Run the traceroute command using system() with shorter timeout
         message("Executing: ", full_cmd)
-        system_result <- system(full_cmd, intern = TRUE, timeout = 30)
+
+        # Use a progress indicator
+        progress <- shiny::Progress$new()
+        progress$set(message = "Running traceroute...", value = 0.1)
+
+        system_result <- system(full_cmd, intern = TRUE, timeout = 10)  # Even shorter timeout
+
+        progress$set(value = 0.5, message = "Parsing results...")
 
         if (length(system_result) == 0) {
           warning("Traceroute command returned no output")
-          shiny::showNotification("Traceroute returned no output. Command may not be available.", type = "warning")
+          progress$close()
+          shiny::showNotification("Traceroute returned no output. Using demo data.", type = "warning")
 
-          # Fallback to demo data
-          parsed_data <- data.frame(
-            hop = 1:4,
-            ip_hostname = c("192.168.1.1", "10.0.0.1", "8.8.8.8", target),
-            rtt1 = c(1.2, 5.4, 23.1, 45.2),
-            rtt2 = c(1.1, 5.6, 22.8, 45.8),
-            rtt3 = c(1.3, 5.2, 23.4, 44.9),
-            avg_rtt = c(1.2, 5.4, 23.1, 45.0),
+          # Fallback to demo data with progressive display
+          demo_data <- data.frame(
+            hop = integer(),
+            ip_hostname = character(),
+            rtt1 = numeric(),
+            rtt2 = numeric(),
+            rtt3 = numeric(),
+            avg_rtt = numeric(),
             stringsAsFactors = FALSE
           )
+
+          # Simulate progressive display of demo data
+          for (i in 1:6) {
+            Sys.sleep(0.3)  # Small delay for visual effect
+
+            new_row <- data.frame(
+              hop = i,
+              ip_hostname = c("192.168.1.1", "10.0.0.1", "203.0.113.1", "8.8.8.8", "8.8.8.8", "8.8.8.8")[i],
+              rtt1 = c(1.2, 5.4, 23.1, 45.2, 44.8, 45.1)[i],
+              rtt2 = c(1.1, 5.6, 22.8, 45.8, 45.2, 44.7)[i],
+              rtt3 = c(1.3, 5.2, 23.4, 44.9, 45.1, 45.3)[i],
+              avg_rtt = c(1.2, 5.4, 23.1, 45.3, 45.0, 45.0)[i],
+              stringsAsFactors = FALSE
+            )
+
+            demo_data <- rbind(demo_data, new_row)
+            traceroute_data_reactive(demo_data)
+
+            progress$set(value = 0.5 + (i/6)*0.4, message = sprintf("Processing hop %d...", i))
+          }
+
+          parsed_data <- demo_data
         } else {
-          # Parse the output
+          # Parse the output progressively
           output_text <- paste(system_result, collapse = "\n")
 
           # Parse based on OS
@@ -503,7 +536,8 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
 
           if (nrow(parsed_data) == 0) {
             warning("Failed to parse traceroute output")
-            shiny::showNotification("Failed to parse traceroute output.", type = "warning")
+            progress$close()
+            shiny::showNotification("Failed to parse traceroute output. Using demo data.", type = "warning")
 
             # Fallback to demo data
             parsed_data <- data.frame(
@@ -516,26 +550,26 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
               stringsAsFactors = FALSE
             )
           }
+
+          # Simulate progressive display for real data
+          temp_data <- data.frame()
+          for (i in 1:nrow(parsed_data)) {
+            Sys.sleep(0.2)  # Small delay for visual effect
+            temp_data <- rbind(temp_data, parsed_data[i, ])
+            traceroute_data_reactive(temp_data)
+            progress$set(value = 0.5 + (i/nrow(parsed_data))*0.4,
+                        message = sprintf("Processing hop %d of %d...", i, nrow(parsed_data)))
+          }
         }
 
-        # Parse based on OS
-        if (os == "windows") {
-          parsed_data <- parse_windows_traceroute_output(output_text)
-        } else {
-          parsed_data <- parse_unix_traceroute_output(output_text)
-        }
-
-        if (nrow(parsed_data) == 0) {
-          shiny::showNotification("No traceroute data received. Check target.", type = "warning")
-          return()
-        }
+        progress$set(value = 0.9, message = "Adding AS information...")
 
         # Add AS information if we have demo data
-        demo_data <- as_data_reactive()
-        if (!is.null(demo_data) && nrow(demo_data) > 0) {
+        as_demo_data <- as_data_reactive()
+        if (!is.null(as_demo_data) && nrow(as_demo_data) > 0) {
           parsed_data$asn <- sapply(parsed_data$ip_hostname, function(ip) {
             if (is.na(ip) || ip == "" || !validate_ip(ip, "ipv4")) return(NA)
-            ip_to_asn(ip, demo_data)
+            ip_to_asn(ip, as_demo_data)
           })
         } else {
           parsed_data$asn <- NA
@@ -551,39 +585,16 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
           parsed_data$as_path_length <- 0
         }
 
-        # Update reactive data
+        progress$set(value = 1.0, message = "Complete!")
+        progress$close()
+
+        # Final update of reactive data
         traceroute_data_reactive(parsed_data)
-
-        # Render table
-        output$trace_table <- DT::renderDataTable({
-          display_cols <- c("hop", "ip_hostname", "avg_rtt", "asn")
-          if ("hostname" %in% names(parsed_data)) {
-            display_cols <- c(display_cols, "hostname")
-          }
-          DT::datatable(parsed_data[, display_cols, drop = FALSE],
-                       options = list(pageLength = 10),
-                       colnames = c("Hop" = "hop", "IP/Host" = "ip_hostname",
-                                   "Avg RTT (ms)" = "avg_rtt", "ASN" = "asn", "Hostname" = "hostname"))
-        })
-
-        # Render plot
-        output$trace_plot <- plotly::renderPlotly({
-          valid_rtt <- !is.na(parsed_data$avg_rtt)
-          if (sum(valid_rtt) == 0) {
-            plotly::plot_ly() %>%
-              plotly::layout(title = paste("No RTT data available for", target))
-          } else {
-            plotly::plot_ly(parsed_data[valid_rtt, ], x = ~hop, y = ~avg_rtt,
-                           type = "scatter", mode = "lines+markers", name = "RTT") %>%
-              plotly::layout(title = paste("Traceroute to", target),
-                            xaxis = list(title = "Hop Number"),
-                            yaxis = list(title = "Round Trip Time (ms)"))
-          }
-        })
 
         shiny::showNotification(sprintf("Traceroute completed! Found %d hops", nrow(parsed_data)), type = "message", duration = 3)
 
       }, error = function(e) {
+        if (exists("progress")) progress$close()
         shiny::showNotification(paste("Traceroute error:", e$message), type = "error")
         warning("Traceroute error: ", e$message)
       })
