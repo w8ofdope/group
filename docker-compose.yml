@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # Main Shiny application
+  internet-structure-app:
+    build:
+      context: .
+      dockerfile: inst/docker/Dockerfile
+    container_name: internet-structure-app
+    ports:
+      - "3838:3838"
+    volumes:
+      - ./data:/app/data:rw
+      - ./logs:/app/logs:rw
+      - ./output:/app/output:rw
+    environment:
+      - R_ENV=production
+      - SHINY_LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3838/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - internet-structure-network
+
+  # Database service for data storage
+  internet-structure-db:
+    image: postgres:15-alpine
+    container_name: internet-structure-db
+    environment:
+      POSTGRES_DB: internet_structure
+      POSTGRES_USER: internet_user
+      POSTGRES_PASSWORD: internet_pass_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./inst/docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U internet_user -d internet_structure"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - internet-structure-network
+
+  # Redis for caching (optional)
+  internet-structure-redis:
+    image: redis:7-alpine
+    container_name: internet-structure-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - internet-structure-network
+
+  # Nginx reverse proxy (optional, for production)
+  internet-structure-nginx:
+    image: nginx:alpine
+    container_name: internet-structure-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./inst/docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./inst/docker/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - internet-structure-app
+    restart: unless-stopped
+    networks:
+      - internet-structure-network
+    profiles:
+      - production
+
+  # Data collection worker (optional background service)
+  internet-structure-worker:
+    build:
+      context: .
+      dockerfile: inst/docker/Dockerfile.worker
+    container_name: internet-structure-worker
+    volumes:
+      - ./data:/app/data:rw
+      - ./logs:/app/logs:rw
+    environment:
+      - R_ENV=production
+      - DB_HOST=internet-structure-db
+      - REDIS_HOST=internet-structure-redis
+    depends_on:
+      internet-structure-db:
+        condition: service_healthy
+      internet-structure-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - internet-structure-network
+    profiles:
+      - worker
+
+volumes:
+  postgres_data:
+  redis_data:
+  nginx_logs:
+
+networks:
+  internet-structure-network:
+    driver: bridge

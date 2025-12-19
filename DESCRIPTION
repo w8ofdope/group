@@ -1,0 +1,55 @@
+Package: internet_structure
+Title: Research Internet Structure and Connectivity
+Version: 0.1.0
+Authors@R: c(
+    person("Group", "Research", email = "group@example.com", role = c("aut", "cre"))
+  )
+Description: A comprehensive R package for researching the structure and connectivity
+    of the Internet based on autonomous systems (AS) data, BGP routes, and network
+    traffic analysis. Provides tools for data collection from public sources like
+    DB-IP and MaxMind GeoLite, traceroute data extraction, AS data representation,
+    and interactive visualization through Shiny web applications.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+URL: https://github.com/w8ofdope/group
+BugReports: https://github.com/w8ofdope/group/issues
+Depends:
+    R (>= 4.0.0)
+Imports:
+    dplyr,
+    tidyr,
+    readr,
+    httr,
+    jsonlite,
+    data.table,
+    lubridate,
+    stringr,
+    purrr,
+    shiny,
+    shinydashboard,
+    plotly,
+    leaflet,
+    DT,
+    igraph,
+    networkD3,
+    ggplot2,
+    RSQLite,
+    DBI,
+    processx,
+    xml2,
+    rvest,
+    curl,
+    openssl,
+    yaml
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    devtools,
+    roxygen2,
+    pkgdown,
+    quarto
+Config/testthat/edition: 3
+VignetteBuilder: knitr

@@ -1,0 +1,101 @@
+# R package development
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Compiled objects
+*.o
+*.so
+*.dll
+
+# R environment files
+.Renviron
+.env
+.env.local
+
+# Package builds
+*.tar.gz
+*.zip
+
+# Documentation
+inst/doc/
+docs/
+vignettes/*.html
+vignettes/*.pdf
+
+# Testing
+tests/testthat.R
+tests/testthat.Rout
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Data files (temporary)
+data/
+!data-raw/
+data-raw/*.csv
+data-raw/*.rds
+data-raw/*.RData
+
+# Docker
+.dockerignore
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Node modules (if any)
+node_modules/
+
+# Coverage reports
+coverage/
+*.out
+
+# pkgdown site
+docs/
+
+# Check results
+check/
+*.Rcheck/
+
+# Installation files
+src/*.o
+src/*.so
+src/*.dll
+
+# Translation files
+po/*.pot
+po/*.po
+po/*.mo
+
+# Database files (local development)
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis dumps
+dump.rdb
+
+# SSL certificates (development)
+*.pem
+*.key
+*.crt
