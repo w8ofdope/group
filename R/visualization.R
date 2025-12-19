@@ -128,6 +128,9 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
   # Define server
   server <- function(input, output, session) {
 
+    # Ensure magrittr is loaded for %>% operator
+    require(magrittr)
+
     # Load demo data if no data provided
     if (is.null(as_data)) {
       # Create inline demo data instead of loading from .rda files
