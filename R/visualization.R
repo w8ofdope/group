@@ -444,43 +444,119 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
       networkD3::simpleNetwork(links, height = 600)
     })
 
-    # Traceroute functionality
+    # Real Traceroute functionality
     shiny::observeEvent(input$run_trace, {
       target <- input$trace_target
 
-      # Show notification
-      shiny::showNotification("Loading demo traceroute data...", type = "message")
-
-      # Use demo traceroute data
-      trace_data <- traceroute_data_reactive()
-
-      # Filter by target if possible
-      if (!is.null(trace_data) && nrow(trace_data) > 0) {
-        # For demo, just show the data
-        display_data <- trace_data
-      } else {
-        # Fallback mock data
-        display_data <- data.frame(
-          hop = 1:5,
-          ip_hostname = c("192.168.1.1", "10.0.0.1", "203.0.113.1", target, target),
-          avg_rtt = c(1.2, 5.4, 23.1, 45.2, 44.8),
-          asn = c(NA, NA, 3356, 15169, 15169)
-        )
+      # Validate target
+      if (is.null(target) || target == "") {
+        shiny::showNotification("Please enter a valid target IP or hostname", type = "error")
+        return()
       }
 
-      output$trace_table <- DT::renderDataTable({
-        DT::datatable(display_data, options = list(pageLength = 10))
-      })
+      # Show progress notification
+      shiny::showNotification("Running traceroute... This may take a few seconds", type = "message", duration = 3)
 
-      output$trace_plot <- plotly::renderPlotly({
-        plotly::plot_ly(display_data, x = ~hop, y = ~avg_rtt, type = "scatter",
-                       mode = "lines+markers", name = "RTT") %>%
-          plotly::layout(title = paste("Traceroute to", target),
-                        xaxis = list(title = "Hop"),
-                        yaxis = list(title = "RTT (ms)"))
-      })
+      tryCatch({
+        # Determine OS and traceroute command
+        os <- tolower(Sys.info()["sysname"])
 
-      shiny::showNotification("Demo traceroute data loaded!", type = "message", duration = 2)
+        if (os == "windows") {
+          # Windows tracert command
+          cmd <- "tracert"
+          args <- c("-h", "30", "-w", "2000", target)  # 30 hops max, 2 second timeout
+        } else if (os %in% c("linux", "darwin")) {
+          # Unix traceroute
+          cmd <- "traceroute"
+          args <- c("-m", "30", "-w", "2", target)  # 30 hops max, 2 second timeout
+        } else {
+          stop("Unsupported operating system: ", os)
+        }
+
+        # Run the traceroute command
+        result <- processx::run(cmd, args, error_on_status = FALSE, timeout = 30)
+
+        if (result$status != 0) {
+          warning("Traceroute command failed with status: ", result$status)
+          shiny::showNotification("Traceroute command failed. Check target and try again.", type = "error")
+          return()
+        }
+
+        # Parse the output
+        output_text <- result$stdout
+        if (output_text == "" && result$stderr != "") {
+          output_text <- result$stderr
+        }
+
+        # Parse based on OS
+        if (os == "windows") {
+          parsed_data <- parse_windows_traceroute_output(output_text)
+        } else {
+          parsed_data <- parse_unix_traceroute_output(output_text)
+        }
+
+        if (nrow(parsed_data) == 0) {
+          shiny::showNotification("No traceroute data received. Check target.", type = "warning")
+          return()
+        }
+
+        # Add AS information if we have demo data
+        demo_data <- as_data_reactive()
+        if (!is.null(demo_data) && nrow(demo_data) > 0) {
+          parsed_data$asn <- sapply(parsed_data$ip_hostname, function(ip) {
+            if (is.na(ip) || ip == "" || !validate_ip(ip, "ipv4")) return(NA)
+            ip_to_asn(ip, demo_data)
+          })
+        } else {
+          parsed_data$asn <- NA
+        }
+
+        # Create AS path
+        valid_asns <- na.omit(parsed_data$asn)
+        if (length(valid_asns) > 0) {
+          parsed_data$as_path <- paste(valid_asns, collapse = " -> ")
+          parsed_data$as_path_length <- length(valid_asns)
+        } else {
+          parsed_data$as_path <- ""
+          parsed_data$as_path_length <- 0
+        }
+
+        # Update reactive data
+        traceroute_data_reactive(parsed_data)
+
+        # Render table
+        output$trace_table <- DT::renderDataTable({
+          display_cols <- c("hop", "ip_hostname", "avg_rtt", "asn")
+          if ("hostname" %in% names(parsed_data)) {
+            display_cols <- c(display_cols, "hostname")
+          }
+          DT::datatable(parsed_data[, display_cols, drop = FALSE],
+                       options = list(pageLength = 10),
+                       colnames = c("Hop" = "hop", "IP/Host" = "ip_hostname",
+                                   "Avg RTT (ms)" = "avg_rtt", "ASN" = "asn", "Hostname" = "hostname"))
+        })
+
+        # Render plot
+        output$trace_plot <- plotly::renderPlotly({
+          valid_rtt <- !is.na(parsed_data$avg_rtt)
+          if (sum(valid_rtt) == 0) {
+            plotly::plot_ly() %>%
+              plotly::layout(title = paste("No RTT data available for", target))
+          } else {
+            plotly::plot_ly(parsed_data[valid_rtt, ], x = ~hop, y = ~avg_rtt,
+                           type = "scatter", mode = "lines+markers", name = "RTT") %>%
+              plotly::layout(title = paste("Traceroute to", target),
+                            xaxis = list(title = "Hop Number"),
+                            yaxis = list(title = "Round Trip Time (ms)"))
+          }
+        })
+
+        shiny::showNotification(sprintf("Traceroute completed! Found %d hops", nrow(parsed_data)), type = "message", duration = 3)
+
+      }, error = function(e) {
+        shiny::showNotification(paste("Traceroute error:", e$message), type = "error")
+        warning("Traceroute error: ", e$message)
+      })
     })
 
     # Full data table

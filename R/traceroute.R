@@ -415,3 +415,123 @@ ip_to_numeric <- function(ip) {
   if (length(parts) != 4) return(NA)
   return(parts[1] * 256^3 + parts[2] * 256^2 + parts[3] * 256 + parts[4])
 }
+
+# Parse Windows tracert output
+parse_windows_traceroute_output <- function(output_text) {
+  if (is.null(output_text) || output_text == "") {
+    return(data.frame())
+  }
+
+  # Split into lines
+  lines <- stringr::str_split(output_text, "\n", simplify = TRUE) %>%
+    stringr::str_trim() %>%
+    .[. != ""]
+
+  # Remove header lines
+  data_lines <- lines[!stringr::str_detect(lines, "^(Tracing route|Maximum hops|traceroute to)")]
+
+  hop_data <- purrr::map_dfr(seq_along(data_lines), function(i) {
+    line <- data_lines[i]
+
+    # Windows format: "  1    <1 ms    <1 ms    <1 ms  192.168.1.1"
+    # Extract hop number and timing/IP info
+    hop_match <- stringr::str_match(line, "^\\s*(\\d+)\\s+(.+)$")
+
+    if (is.na(hop_match[1])) return(NULL)
+
+    hop_number <- as.numeric(hop_match[2])
+    rest <- hop_match[3]
+
+    # Extract timing information and IP/hostname
+    # Pattern: "time1 time2 time3 ip_or_host"
+    timing_ip_match <- stringr::str_match(rest, "^([^\\d]+)?\\s*(\\d+\\s+ms|\\*)\\s+(\\d+\\s+ms|\\*)\\s+(\\d+\\s+ms|\\*)\\s+(.+)$")
+
+    if (!is.na(timing_ip_match[1])) {
+      time1 <- timing_ip_match[3]
+      time2 <- timing_ip_match[4]
+      time3 <- timing_ip_match[5]
+      ip_hostname <- stringr::str_trim(timing_ip_match[6])
+    } else {
+      # Alternative pattern for cases without clear timing
+      time1 <- time2 <- time3 <- NA
+      ip_hostname <- stringr::str_trim(rest)
+    }
+
+    # Clean timing values
+    clean_time <- function(time_str) {
+      if (is.na(time_str) || time_str == "*") return(NA_real_)
+      as.numeric(stringr::str_extract(time_str, "\\d+"))
+    }
+
+    data.frame(
+      hop = hop_number,
+      ip_hostname = ip_hostname,
+      rtt1 = clean_time(time1),
+      rtt2 = clean_time(time2),
+      rtt3 = clean_time(time3),
+      avg_rtt = mean(c(clean_time(time1), clean_time(time2), clean_time(time3)), na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+  })
+
+  return(hop_data)
+}
+
+# Parse Unix traceroute output
+parse_unix_traceroute_output <- function(output_text) {
+  if (is.null(output_text) || output_text == "") {
+    return(data.frame())
+  }
+
+  # Split into lines
+  lines <- stringr::str_split(output_text, "\n", simplify = TRUE) %>%
+    stringr::str_trim() %>%
+    .[. != ""]
+
+  # Remove header lines
+  data_lines <- lines[!stringr::str_detect(lines, "^traceroute to")]
+
+  hop_data <- purrr::map_dfr(seq_along(data_lines), function(i) {
+    line <- data_lines[i]
+
+    # Unix format: " 1  router.local (192.168.1.1)  1.234 ms  1.456 ms  2.345 ms"
+    # Extract hop number
+    hop_match <- stringr::str_match(line, "^\\s*(\\d+)\\s+(.+)$")
+
+    if (is.na(hop_match[1])) return(NULL)
+
+    hop_number <- as.numeric(hop_match[2])
+    rest <- hop_match[3]
+
+    # Extract hostname/IP and timing
+    # Pattern: "hostname (ip) time1 time2 time3 ..."
+    host_ip_match <- stringr::str_match(rest, "^([^\\(]+)?\\s*\\(?([\\d\\.]+)\\)?\\s*(.+)$")
+
+    if (!is.na(host_ip_match[1])) {
+      hostname <- stringr::str_trim(host_ip_match[2])
+      ip <- host_ip_match[3]
+      timing_part <- host_ip_match[4]
+    } else {
+      hostname <- NA
+      ip <- stringr::str_extract(rest, "[\\d\\.]+")
+      timing_part <- stringr::str_remove(rest, "[\\d\\.]+")
+    }
+
+    # Extract timing values
+    timing_matches <- stringr::str_match_all(timing_part, "([\\d\\.]+)\\s*ms")[[1]]
+    rtt_values <- as.numeric(timing_matches[,2])
+
+    data.frame(
+      hop = hop_number,
+      hostname = hostname,
+      ip_hostname = ip,
+      rtt1 = if(length(rtt_values) >= 1) rtt_values[1] else NA,
+      rtt2 = if(length(rtt_values) >= 2) rtt_values[2] else NA,
+      rtt3 = if(length(rtt_values) >= 3) rtt_values[3] else NA,
+      avg_rtt = if(length(rtt_values) > 0) mean(rtt_values, na.rm = TRUE) else NA,
+      stringsAsFactors = FALSE
+    )
+  })
+
+  return(hop_data)
+}
