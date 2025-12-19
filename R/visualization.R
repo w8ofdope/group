@@ -133,21 +133,104 @@ create_shiny_app <- function(as_data = NULL, traceroute_data = NULL,
 
     # Load demo data if no data provided
     if (is.null(as_data)) {
-      # Create inline demo data instead of loading from .rda files
+      # Create comprehensive inline demo data (600+ records with diverse ASNs, countries, and IP ranges)
+      # Major tech companies and ISPs
+      asns <- c(15169, 13335, 3356, 701, 7018, 3549, 1299, 3320, 2914, 3257, 6453, 6830, 6939, 20940, 8220, 12389, 15557, 6762, 3303, 6848,
+               3491, 6461, 7922, 9002, 1273, 174, 2860, 3320, 2914, 3257, 12956, 15576, 20773, 30844, 31133, 31500, 32934, 33891, 34164, 34549,
+               34659, 34984, 35228, 35470, 35625, 35805, 35819, 35908, 36236, 36351, 36459, 36692, 36925, 37100, 37271, 37468, 37662, 37697, 37889, 38001)
+
+      organizations <- c("Google LLC", "Cloudflare, Inc.", "Level 3 Communications, Inc.", "MCI Communications Services, Inc. d/b/a Verizon Business", "AT&T Services, Inc.",
+                        "Level 3 Parent, LLC", "Telia Company AB", "Deutsche Telekom AG", "NTT America, Inc.", "GTT Communications Inc.", "TATA Communications",
+                        "Liberty Global Operations B.V.", "Hurricane Electric LLC", "Akamai International B.V.", "COLT Technology Services Group Limited",
+                        "Rostelecom", "Societe Francaise du Radiotelephone - SFR", "Seabone Net", "Swisscom (Schweiz) AG", "Telenet BVBA",
+                        "PCCW Global, Inc.", "Zayo Bandwidth", "Comcast Cable Communications, LLC", "RETN Limited", "Cable & Wireless Worldwide plc",
+                        "Cogent Communications", "Nos Comunicacoes, S.A.", "Deutsche Telekom AG", "NTT America, Inc.", "GTT Communications Inc.",
+                        "Telefonica Germany GmbH & Co.OHG", "NTS workspace AG", "Host Europe GmbH", "Liquid Telecommunications Ltd", "PJSC MegaFon",
+                        "VimpelCom", "Google LLC", "PJSC Vimpelcom", "PJSC MegaFon", "TalkTalk Communications Limited",
+                        "Telecom Italia S.p.A.", "Telia Company AB", "Daisy Communications Ltd", "Interoute Communications Limited", "Kabel Deutschland GmbH",
+                        "AlpineDC.com", "M247 Ltd", "Vodafone GmbH", "NetActuate, Inc", "SoftLayer Technologies Inc.",
+                        "GitHub, Inc.", "OpenTLD BV", "Simcentric Solutions Limited", "SEACOM Limited", "Workonline Communications (Pty) Ltd",
+                        "Packet Exchange Limited", "West263 Internet Services", "Node4 Limited", "Redcentric plc", "Hibernia Networks")
+
+      countries <- c("US", "US", "US", "US", "US", "US", "SE", "DE", "US", "US", "IN", "NL", "US", "NL", "GB", "RU", "FR", "US", "CH", "BE",
+                    "HK", "US", "US", "GB", "GB", "US", "PT", "DE", "US", "US", "DE", "CH", "DE", "GB", "RU", "RU", "US", "RU", "RU", "GB",
+                    "IT", "SE", "GB", "GB", "DE", "CH", "GB", "DE", "US", "US", "US", "NL", "GB", "ZA", "ZA", "GB", "CN", "GB", "GB", "IE")
+
+      country_names <- c("United States", "United States", "United States", "United States", "United States",
+                        "United States", "Sweden", "Germany", "United States", "United States",
+                        "India", "Netherlands", "United States", "Netherlands", "United Kingdom",
+                        "Russia", "France", "United States", "Switzerland", "Belgium",
+                        "Hong Kong", "United States", "United States", "United Kingdom", "United Kingdom",
+                        "United States", "Portugal", "Germany", "United States", "United States",
+                        "Germany", "Switzerland", "Germany", "United Kingdom", "Russia",
+                        "Russia", "United States", "Russia", "Russia", "United Kingdom",
+                        "Italy", "Sweden", "United Kingdom", "United Kingdom", "Germany",
+                        "Switzerland", "United Kingdom", "Germany", "United States", "United States",
+                        "United States", "Netherlands", "United Kingdom", "South Africa", "South Africa",
+                        "United Kingdom", "China", "United Kingdom", "United Kingdom", "Ireland")
+
+      continents <- c("NA", "NA", "NA", "NA", "NA", "NA", "EU", "EU", "NA", "NA", "AS", "EU", "NA", "EU", "EU", "EU", "EU", "NA", "EU", "EU",
+                     "AS", "NA", "NA", "EU", "EU", "NA", "EU", "EU", "NA", "NA", "EU", "EU", "EU", "EU", "EU", "EU", "NA", "EU", "EU", "EU",
+                     "EU", "EU", "EU", "EU", "EU", "EU", "EU", "EU", "NA", "NA", "NA", "EU", "EU", "AF", "AF", "EU", "AS", "EU", "EU", "EU")
+
+      continent_names <- c("North America", "North America", "North America", "North America", "North America",
+                          "North America", "Europe", "Europe", "North America", "North America",
+                          "Asia", "Europe", "North America", "Europe", "Europe",
+                          "Europe", "Europe", "North America", "Europe", "Europe",
+                          "Asia", "North America", "North America", "Europe", "Europe",
+                          "North America", "Europe", "Europe", "North America", "North America",
+                          "Europe", "Europe", "Europe", "Europe", "Europe",
+                          "Europe", "North America", "Europe", "Europe", "Europe",
+                          "Europe", "Europe", "Europe", "Europe", "Europe",
+                          "Europe", "Europe", "Europe", "North America", "North America",
+                          "North America", "Europe", "Europe", "Africa", "Africa",
+                          "Europe", "Asia", "Europe", "Europe", "Europe")
+
+      # Generate 600+ records with diverse combinations
+      set.seed(12345)
+      n_records <- 600
+
       as_data <- data.frame(
-        asn = c(15169, 15169, 13335, 13335, 3356, 3356),
-        organization = c("Google LLC", "Google LLC", "Cloudflare, Inc.", "Cloudflare, Inc.",
-                        "Level 3 Communications, Inc.", "Level 3 Communications, Inc."),
-        start_ip = c("8.8.8.0", "8.8.4.0", "1.1.1.0", "1.0.0.0", "208.67.222.0", "208.67.220.0"),
-        end_ip = c("8.8.8.255", "8.8.4.255", "1.1.1.255", "1.0.0.255", "208.67.222.255", "208.67.220.255"),
-        country_code = c("US", "US", "US", "US", "US", "US"),
-        country_name = c("United States", "United States", "United States", "United States", "United States", "United States"),
-        continent_code = c("NA", "NA", "NA", "NA", "NA", "NA"),
-        continent_name = c("North America", "North America", "North America", "North America", "North America", "North America"),
-        ip_count = c(256, 256, 256, 256, 256, 256),
-        start_ip_numeric = c(134744072, 134743044, 16843008, 16777216, 3503329792, 3503329536),
-        end_ip_numeric = c(134744327, 134743299, 16843263, 16777471, 3503330047, 3503329791)
+        asn = sample(asns, n_records, replace = TRUE),
+        organization = "",
+        start_ip = "",
+        end_ip = "",
+        country_code = sample(countries, n_records, replace = TRUE),
+        country_name = "",
+        continent_code = "",
+        continent_name = "",
+        ip_count = sample(c(256, 512, 1024, 2048, 4096), n_records, replace = TRUE),
+        start_ip_numeric = 0,
+        end_ip_numeric = 0
       )
+
+      # Fill organization, country_name, continent info based on ASN/country
+      for (i in 1:n_records) {
+        asn_idx <- match(as_data$asn[i], asns)
+        if (!is.na(asn_idx)) {
+          as_data$organization[i] <- organizations[asn_idx]
+        }
+
+        country_idx <- match(as_data$country_code[i], countries)
+        if (!is.na(country_idx)) {
+          as_data$country_name[i] <- country_names[country_idx]
+          as_data$continent_code[i] <- continents[country_idx]
+          as_data$continent_name[i] <- continent_names[country_idx]
+        }
+
+        # Generate random IP ranges
+        base_ip <- sample(1000000000:4000000000, 1)
+        as_data$start_ip_numeric[i] <- base_ip
+        as_data$end_ip_numeric[i] <- base_ip + as_data$ip_count[i] - 1
+
+        # Convert to IP strings
+        as_data$start_ip[i] <- numeric_to_ip(base_ip)
+        as_data$end_ip[i] <- numeric_to_ip(base_ip + as_data$ip_count[i] - 1)
+      }
+
+      # Remove duplicates and ensure data quality
+      as_data <- as_data[!duplicated(as_data[, c("asn", "start_ip")]), ]
+      as_data <- as_data[as_data$asn > 0 & !is.na(as_data$country_code), ]
     }
 
     if (is.null(traceroute_data)) {
